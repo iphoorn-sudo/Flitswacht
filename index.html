@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#070b10">
+  <meta name="color-scheme" content="dark">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Flitswacht">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="description" content="Richtingsbewuste flitserwaarschuwing voor NL, BE en LU, op basis van OpenStreetMap.">
+  <title>Flitswacht</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="css/app.css">
+  <script src="vendor/leaflet/leaflet.js" defer></script>
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <div id="app" class="app">
+
+    <!-- ===================== STARTSCHERM ===================== -->
+    <section id="screen-start" class="screen screen-start" aria-label="Start">
+      <div class="start-inner">
+        <img class="start-logo" src="icons/icon.svg" alt="" width="112" height="112">
+        <h1 class="start-title">Flitswacht</h1>
+        <p class="start-tag">Probeert alleen te waarschuwen voor flitsers op <em>jouw</em> weg, in <em>jouw</em> rijrichting.</p>
+
+        <button id="btn-start" class="btn btn-primary btn-huge" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+          Start rit
+        </button>
+
+        <div class="start-row">
+          <button id="btn-sim" class="btn btn-ghost" type="button">Simulatie</button>
+          <button id="btn-settings-start" class="btn btn-ghost" type="button">Instellingen</button>
+          <button id="btn-about-start" class="btn btn-ghost" type="button">Over</button>
+        </div>
+
+        <p class="start-note">Vaste flitsers, roodlicht- en trajectcontroles uit OpenStreetMap.
+          <strong>Geen live mobiele controles.</strong> Werkt alleen met scherm aan en de app vooraan.
+          Zet de telefoon in een houder vóór je vertrekt.</p>
+
+        <div id="start-msg" class="start-msg" role="status" hidden></div>
+        <button id="update-banner" class="update-banner" type="button" hidden>Nieuwe versie beschikbaar — <strong>Bijwerken</strong></button>
+      </div>
+    </section>
+
+    <!-- ===================== RIJSCHERM ===================== -->
+    <section id="screen-drive" class="screen screen-drive" aria-label="Rijscherm" hidden>
+
+      <header class="statusbar" id="statusbar">
+        <span class="chip" id="st-gps" title="GPS"><i class="dot"></i><span class="chip-txt">GPS…</span></span>
+        <span class="chip" id="st-data" title="Data"><i class="dot"></i><span class="chip-txt">Data…</span></span>
+        <span class="chip" id="st-wake" title="Scherm aan"><i class="dot"></i><span class="chip-txt">Scherm</span></span>
+        <span class="chip chip-sim" id="st-sim" hidden>SIM</span>
+        <span class="statusbar-spacer"></span>
+        <button class="iconbtn" id="btn-settings-drive" type="button" aria-label="Instellingen">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>
+        </button>
+        <button class="iconbtn iconbtn-stop" id="btn-stop" type="button" aria-label="Rit stoppen">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+        </button>
+      </header>
+
+      <div class="banners" id="banners" aria-live="assertive" hidden></div>
+
+      <div class="alertbar level-idle" id="alertbar" role="status" aria-live="polite">
+        <div class="alert-icon" id="alert-icon" aria-hidden="true"></div>
+        <div class="alert-main">
+          <div class="alert-type" id="alert-type">Vrije weg</div>
+          <div class="alert-sub" id="alert-sub">Wachten op GPS…</div>
+        </div>
+        <div class="alert-dist" id="alert-dist"></div>
+      </div>
+
+      <div class="hud" id="hud">
+        <div class="speed" id="speed-box">
+          <span class="speed-num" id="speed">–</span>
+          <span class="speed-unit">km/h</span>
+        </div>
+        <div class="limit" id="limit" aria-label="Maximumsnelheid">
+          <span class="limit-num" id="limit-num">?</span>
+        </div>
+      </div>
+
+      <div class="section-panel" id="section-panel" hidden>
+        <div class="sec-head">
+          <span class="sec-title" id="sec-title">Trajectcontrole</span>
+          <span class="sec-left" id="sec-left"></span>
+        </div>
+        <div class="sec-grid">
+          <div class="sec-cell">
+            <span class="sec-label">Gemiddeld</span>
+            <span class="sec-val" id="sec-avg">–</span>
+          </div>
+          <div class="sec-cell">
+            <span class="sec-label">Toegestaan rest</span>
+            <span class="sec-val" id="sec-allowed">–</span>
+          </div>
+          <div class="sec-cell">
+            <span class="sec-label">Limiet</span>
+            <span class="sec-val" id="sec-limit">–</span>
+          </div>
+        </div>
+        <div class="sec-progress"><i id="sec-bar"></i></div>
+      </div>
+
+      <div class="mapwrap" id="mapwrap">
+        <div class="map" id="map" aria-label="Kaart"></div>
+        <div class="map-attrib">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap-bijdragers</a></div>
+      </div>
+
+      <div class="reportzone" id="reportzone" hidden>
+        <button id="btn-report" class="btn-report" type="button" aria-label="Meld flitser op huidige positie (lang indrukken bij stilstand: vaste eigen plek)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v3M5.6 5.6l2.1 2.1M18.4 5.6l-2.1 2.1"/><rect x="5" y="10" width="14" height="9" rx="2.5"/><circle cx="12" cy="14.5" r="2.4"/></svg>
+          <span>Meld flitser</span>
+        </button>
+        <div class="report-actions" id="report-actions" hidden>
+          <button id="btn-rep-confirm" class="btn btn-rep-ok" type="button">Staat er nog</button>
+          <button id="btn-rep-remove" class="btn btn-rep-gone" type="button">Weg</button>
+        </div>
+      </div>
+
+
+    </section>
+
+    <!-- uitgeklapte meldingen (N4) -->
+    <div class="sheet notice-overlay" id="notice-overlay" role="dialog" aria-modal="true" aria-labelledby="notice-head" hidden>
+      <div class="sheet-card">
+        <div class="sheet-head">
+          <h2 id="notice-head">Meldingen</h2>
+          <button class="iconbtn" data-close type="button" aria-label="Sluiten">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </div>
+        <div class="sheet-body" id="notice-list"></div>
+      </div>
+    </div>
+
+    <!-- ===================== INSTELLINGEN ===================== -->
+    <div class="sheet" id="sheet-settings" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
+      <div class="sheet-card">
+        <div class="sheet-head">
+          <h2 id="settings-title">Instellingen</h2>
+          <button class="iconbtn" data-close type="button" aria-label="Sluiten">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </div>
+        <div class="sheet-body">
+          <label class="row"><span>Geluid (piepjes)</span><input type="checkbox" class="switch" id="set-sound"></label>
+          <label class="row"><span>Spraak</span><input type="checkbox" class="switch" id="set-voice"></label>
+          <label class="row" id="row-silentOverride"><span>Geluid ook bij stille modus<small class="row-note" id="note-silentOverride">Kan je muziek onderbreken.</small></span><input type="checkbox" class="switch" id="set-silentOverride"></label>
+          <div class="row">
+            <span>Tolerantie boven limiet</span>
+            <span class="stepper">
+              <button type="button" data-step="tolerance" data-delta="-1" aria-label="Minder">−</button>
+              <output id="set-tolerance">3</output><small>km/h</small>
+              <button type="button" data-step="tolerance" data-delta="1" aria-label="Meer">+</button>
+            </span>
+          </div>
+          <div class="row">
+            <span>Voorwaarschuwing</span>
+            <span class="stepper">
+              <button type="button" data-step="leadS" data-delta="-5" aria-label="Korter">−</button>
+              <output id="set-leadS">15</output><small>s</small>
+              <button type="button" data-step="leadS" data-delta="5" aria-label="Langer">+</button>
+            </span>
+          </div>
+          <label class="row"><span>Nachtmodus (gedimd)</span><input type="checkbox" class="switch" id="set-night"></label>
+          <label class="row"><span>Kaart koers-omhoog</span><input type="checkbox" class="switch" id="set-headingUp"></label>
+          <label class="row"><span>Kaart tonen</span><input type="checkbox" class="switch" id="set-showMap"></label>
+          <div class="reports-block" id="reports-block">
+            <h3>Eigen meldingen</h3>
+            <p class="fine">Mobiele meldingen vervallen na 3 uur (bevestigen verlengt). Lang indrukken op "Meld flitser" bij stilstand
+              bewaart een vaste eigen plek die in OpenStreetMap ontbreekt.</p>
+            <ul class="reports-list" id="reports-list"></ul>
+          </div>
+          <div class="row row-actions">
+            <button class="btn btn-ghost" id="btn-test-sound" type="button">Test geluid</button>
+            <button class="btn btn-ghost" id="btn-sim-settings" type="button">Simulatie starten</button>
+          </div>
+          <p class="fine">Instellingen worden alleen op dit toestel bewaard.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== OVER ===================== -->
+    <div class="sheet" id="sheet-about" role="dialog" aria-modal="true" aria-labelledby="about-title" hidden>
+      <div class="sheet-card">
+        <div class="sheet-head">
+          <h2 id="about-title">Over Flitswacht</h2>
+          <button class="iconbtn" data-close type="button" aria-label="Sluiten">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </div>
+        <div class="sheet-body prose">
+          <p class="honest"><strong>Eerlijke beperking:</strong> Flitswacht bevat vaste flitsers, roodlichtcamera's en
+            trajectcontroles uit OpenStreetMap. Er zitten <strong>géén live mobiele flitsers</strong> of
+            politiecontroles in: mobiele flitsers zijn uitsluitend je <strong>eigen meldingen</strong> met de knop
+            "Meld flitser", alleen op dit toestel bewaard. Ontbrekende of verouderde gegevens in OpenStreetMap zie je hier ook niet terug.</p>
+          <p><strong>Alleen in Nederland, België en Luxemburg.</strong> Buiten NL/BE/LU staan de waarschuwingen automatisch uit
+            (in o.a. Duitsland en Zwitserland is een flitserwaarschuwing tijdens het rijden verboden); snelheid en limiet blijven zichtbaar.</p>
+          <p>Wat Flitswacht anders doet:</p>
+          <ul>
+            <li>Probeert alleen te waarschuwen als de camera op <em>jouw</em> weg staat en <em>jouw</em> rijrichting controleert.
+              Is de kaartdata rond een camera onduidelijk, dan zie je een rustige melding "Mogelijk flitser" in plaats van een alarm.
+              Bij afritten, parallelwegen en onvolledige OSM-data kan een melding toch onterecht zijn of ontbreken.</li>
+            <li>Waarschuwingsafstand schaalt met je snelheid (tijd vooraf in plaats van een vaste straal).</li>
+            <li>Bij trajectcontroles: live gemiddelde en de snelheid die je over de rest nog mag rijden.</li>
+            <li>Gefilterde GPS voor rustige snelheid en koers; maximumsnelheid van de huidige weg.</li>
+          </ul>
+          <p>Gebruik: start de rit vóór vertrek, met de telefoon in een houder. Tijdens het rijden is geen bediening nodig.
+            Houd je altijd aan de verkeersregels en de borden langs de weg; deze app is een hulpmiddel zonder garantie.</p>
+          <p><strong>Scherm aan, app vooraan.</strong> Flitswacht waarschuwt alleen zolang het scherm aan staat en de app
+            vooraan open is. Op de achtergrond of met een vergrendeld scherm stopt iOS de app: dan komen er géén waarschuwingen.
+            Scherm-aan-houden werkt betrouwbaar vanaf iOS 18.4 (ook als beginschermapp). Op een oudere iOS-versie:
+            zet Instellingen › Beeldscherm en helderheid › Automatisch slot tijdens de rit op "Nooit".</p>
+          <p>Trajectcontroles, flitserlocaties en maximumsnelheden komen uit OpenStreetMap en kunnen onvolledig of
+            verouderd zijn (bijvoorbeeld een traject dat net is verplaatst of uitgeschakeld).</p>
+          <p>Installeren: open de app via haar GitHub Pages-adres in Safari en kies Deel › "Zet op beginscherm".</p>
+          <p class="fine">Kaart- en flitserdata © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap-bijdragers</a>
+            (ODbL). Kaartweergave met Leaflet. Alle gegevens blijven op dit toestel.</p>
+          <p class="fine" id="about-version"></p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <noscript><p style="padding:2em;color:#fff">Flitswacht heeft JavaScript nodig.</p></noscript>
+</body>
+</html>
